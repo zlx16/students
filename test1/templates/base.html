@@ -16,6 +16,7 @@
         <nav class="nav">
           {% if session.get('admin_logged_in') %}
             <a class="btn btn--primary" href="{{ url_for('new_student') }}">新增学生</a>
+            <a class="btn" href="{{ url_for('import_students_page') }}">批量导入</a>
             <form class="inline" method="post" action="{{ url_for('logout') }}">
               <button class="btn btn--ghost" type="submit">退出登录</button>
             </form>

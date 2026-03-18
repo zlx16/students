@@ -130,6 +130,12 @@ a:hover{text-decoration:underline}
 .toast--success{border-color:rgba(50,213,131,.4);background:rgba(50,213,131,.12)}
 .toast--error{border-color:rgba(255,77,109,.45);background:rgba(255,77,109,.12)}
 
+.hr{height:1px;background:var(--border);margin:16px 0}
+.card--sub{
+  background:rgba(0,0,0,.12);
+  border-radius:14px;
+}
+
 .footer{margin-top:18px;border-top:1px solid var(--border);background:rgba(0,0,0,.08)}
 .footer__inner{padding:14px 18px}
 

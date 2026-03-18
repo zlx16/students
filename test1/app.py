@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import math
 import os
 import re
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, List
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, flash, redirect, render_template, request, session, url_for, Response
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -180,6 +182,236 @@ def create_app() -> Flask:
         session.clear()
         flash("已退出登录。", "success")
         return redirect(url_for("login"))
+
+    def _normalize_header(h: str) -> str:
+        h = _clean_str(h).lower()
+        h = h.replace(" ", "").replace("\ufeff", "")
+        mapping = {
+            "学号": "student_no",
+            "studentno": "student_no",
+            "student_no": "student_no",
+            "学号/工号": "student_no",
+            "姓名": "name",
+            "name": "name",
+            "性别": "gender",
+            "gender": "gender",
+            "年龄": "age",
+            "age": "age",
+            "班级": "class_name",
+            "class": "class_name",
+            "classname": "class_name",
+            "class_name": "class_name",
+            "电话": "phone",
+            "手机号": "phone",
+            "phone": "phone",
+            "备注": "note",
+            "note": "note",
+        }
+        return mapping.get(h, h)
+
+    def _decode_upload(data: bytes) -> str:
+        # 尽量兼容常见编码：UTF-8(BOM)/UTF-8/GBK
+        for enc in ("utf-8-sig", "utf-8", "gbk"):
+            try:
+                return data.decode(enc)
+            except UnicodeDecodeError:
+                continue
+        return data.decode("utf-8", errors="replace")
+
+    def _read_csv_rows(file_bytes: bytes) -> Tuple[List[str], List[Dict[str, Any]], str]:
+        text = _decode_upload(file_bytes)
+        if not text.strip():
+            raise ValueError("文件内容为空")
+
+        sample = text[:4096]
+        delimiter = "," if sample.count(",") >= sample.count("\t") else "\t"
+        reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
+        if reader.fieldnames is None:
+            raise ValueError("无法识别表头，请确认第一行是列名")
+        fieldnames = list(reader.fieldnames)
+        rows = [dict(r) for r in reader]
+        human_delim = "逗号(,)" if delimiter == "," else "制表符(\\t)"
+        return fieldnames, rows, human_delim
+
+    def _read_xlsx_rows(file_bytes: bytes) -> Tuple[List[str], List[Dict[str, Any]], str]:
+        try:
+            from openpyxl import load_workbook  # type: ignore
+        except Exception as e:  # pragma: no cover
+            raise RuntimeError("缺少 Excel 解析依赖 openpyxl，请先安装依赖后重试") from e
+
+        wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
+        ws = wb.worksheets[0]
+        rows_iter = ws.iter_rows(values_only=True)
+        try:
+            header_row = next(rows_iter)
+        except StopIteration:
+            raise ValueError("Excel 内容为空")
+
+        fieldnames: List[str] = [_clean_str(x) for x in header_row]
+        if not any(fieldnames):
+            raise ValueError("无法识别表头，请确认第一行是列名")
+
+        rows: List[Dict[str, Any]] = []
+        for values in rows_iter:
+            if values is None:
+                continue
+            # 空行跳过
+            if all(_clean_str(v) == "" for v in values):
+                continue
+            row: Dict[str, Any] = {}
+            for i, key in enumerate(fieldnames):
+                if not key:
+                    continue
+                cell = values[i] if i < len(values) else ""
+                row[key] = "" if cell is None else str(cell)
+            rows.append(row)
+
+        return fieldnames, rows, "Excel(.xlsx)"
+
+    @app.get("/students/import")
+    def import_students_page():
+        return render_template("import.html", result=None)
+
+    @app.post("/students/import")
+    def import_students():
+        file = request.files.get("file")
+        mode = _clean_str(request.form.get("mode")) or "upsert"
+        if file is None or not file.filename:
+            flash("请选择要导入的 CSV 文件。", "error")
+            return render_template("import.html", result=None), 400
+
+        raw = file.read()
+        filename = _clean_str(file.filename).lower()
+
+        try:
+            if filename.endswith(".xlsx"):
+                fieldnames, raw_rows, source_type = _read_xlsx_rows(raw)
+            else:
+                fieldnames, raw_rows, source_type = _read_csv_rows(raw)
+        except Exception as e:
+            flash(f"解析文件失败：{e}", "error")
+            return render_template("import.html", result=None), 400
+
+        normalized_fieldnames = [_normalize_header(h) for h in fieldnames]
+
+        rows_to_insert = []
+        now = datetime.now().isoformat(timespec="seconds")
+        errors = []
+        total = len(raw_rows)
+
+        # 行号：CSV 为真实行号（含表头），XLSX 这里按“数据行从 2 开始”展示
+        for offset, row in enumerate(raw_rows, start=0):
+            idx = 2 + offset
+            normalized: Dict[str, Any] = {}
+            for k, v in (row or {}).items():
+                if k is None:
+                    continue
+                nk = _normalize_header(k)
+                normalized[nk] = v
+
+            data, e = validate_student_form(normalized)
+            if e or data is None:
+                errors.append({"line": idx, "student_no": _clean_str(normalized.get("student_no")), "errors": e})
+                continue
+
+            rows_to_insert.append(
+                (
+                    data.student_no,
+                    data.name,
+                    data.gender,
+                    data.age,
+                    data.class_name,
+                    data.phone,
+                    data.note,
+                    now,
+                )
+            )
+
+        inserted = 0
+        updated = 0
+
+        if rows_to_insert:
+            with get_conn() as conn:
+                if mode not in {"append", "upsert"}:
+                    mode = "upsert"
+
+                if mode == "append":
+                    try:
+                        conn.executemany(
+                            """
+                            INSERT INTO students (student_no, name, gender, age, class_name, phone, note, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            rows_to_insert,
+                        )
+                        inserted = len(rows_to_insert)
+                    except sqlite3.IntegrityError:
+                        # 如果 append 模式遇到重复学号，逐行插入以定位
+                        for r in rows_to_insert:
+                            try:
+                                conn.execute(
+                                    """
+                                    INSERT INTO students (student_no, name, gender, age, class_name, phone, note, created_at)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                    """,
+                                    r,
+                                )
+                                inserted += 1
+                            except sqlite3.IntegrityError:
+                                errors.append(
+                                    {
+                                        "line": None,
+                                        "student_no": r[0],
+                                        "errors": {"student_no": "学号已存在（append 模式不允许覆盖）"},
+                                    }
+                                )
+                else:
+                    # upsert：学号存在则更新（不改 created_at）
+                    conn.executemany(
+                        """
+                        INSERT INTO students (student_no, name, gender, age, class_name, phone, note, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(student_no) DO UPDATE SET
+                          name = excluded.name,
+                          gender = excluded.gender,
+                          age = excluded.age,
+                          class_name = excluded.class_name,
+                          phone = excluded.phone,
+                          note = excluded.note
+                        """,
+                        rows_to_insert,
+                    )
+                    # SQLite 无法直接区分 insert/update 行数，这里用“可用行数”展示
+                    inserted = len(rows_to_insert)
+
+        result = {
+            "filename": file.filename,
+            "delimiter": source_type,
+            "fieldnames": normalized_fieldnames,
+            "total_rows": total,
+            "accepted_rows": len(rows_to_insert),
+            "inserted": inserted,
+            "updated": updated,
+            "error_count": len(errors),
+            "errors": errors[:50],  # 页面只展示前 50 条
+            "mode": mode,
+        }
+
+        if errors:
+            flash(f"导入完成：成功 {len(rows_to_insert)} 行，失败 {len(errors)} 行（仅展示前 50 条错误）。", "error")
+        else:
+            flash(f"导入成功：共写入 {len(rows_to_insert)} 行。", "success")
+
+        return render_template("import.html", result=result)
+
+    @app.get("/students/import/sample.csv")
+    def import_sample_csv():
+        content = "学号,姓名,性别,年龄,班级,电话,备注\n20260001,张三,男,20,计科1班,13800000000,示例数据\n"
+        return Response(
+            content,
+            mimetype="text/csv; charset=utf-8",
+            headers={"Content-Disposition": "attachment; filename=students_sample.csv"},
+        )
 
     @app.get("/")
     def index():
