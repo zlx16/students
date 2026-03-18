@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import csv
 import io
 import math
 import os
 import re
 import sqlite3
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple, List
@@ -586,6 +588,11 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", default=5000, type=int)
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument(
+        "--pid-file",
+        default=os.path.join(BASE_DIR, ".sms.pid"),
+        help="写入 PID 文件路径（用于一键停止/避免残留进程）",
+    )
     args = parser.parse_args()
 
     if args.init_db:
@@ -595,6 +602,26 @@ def main() -> None:
 
     init_db()
     app = create_app()
+
+    pid_file = args.pid_file
+    try:
+        os.makedirs(os.path.dirname(pid_file) or ".", exist_ok=True)
+        with open(pid_file, "w", encoding="utf-8") as f:
+            f.write(str(os.getpid()))
+    except Exception:
+        # PID 文件写入失败不影响启动
+        pid_file = ""
+
+    if pid_file:
+        def _cleanup_pid_file() -> None:
+            try:
+                if os.path.exists(pid_file):
+                    os.remove(pid_file)
+            except Exception:
+                pass
+
+        atexit.register(_cleanup_pid_file)
+
     app.run(host=args.host, port=args.port, debug=args.debug)
 
 
