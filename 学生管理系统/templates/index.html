@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}学生列表 · 学生管理系统{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <div class="card__header">
+      <h1 class="h1">学生列表</h1>
+      <form class="search" method="get" action="{{ url_for('index') }}">
+        <input
+          class="input"
+          type="search"
+          name="q"
+          value="{{ q }}"
+          placeholder="搜索：姓名 / 学号 / 班级"
+          autocomplete="off"
+        />
+        <button class="btn" type="submit">搜索</button>
+        {% if q %}
+          <a class="btn btn--ghost" href="{{ url_for('index') }}">清空</a>
+        {% endif %}
+      </form>
+    </div>
+
+    <div class="card__body">
+      <div class="meta">
+        <span>共 <strong>{{ total }}</strong> 条</span>
+        <span class="muted">每页 {{ per_page }} 条</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>学号</th>
+              <th>姓名</th>
+              <th>性别</th>
+              <th>年龄</th>
+              <th>班级</th>
+              <th>电话</th>
+              <th>备注</th>
+              <th class="th-actions">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if rows %}
+              {% for r in rows %}
+                <tr>
+                  <td class="mono">{{ r["student_no"] }}</td>
+                  <td><strong>{{ r["name"] }}</strong></td>
+                  <td>{{ r["gender"] }}</td>
+                  <td>{{ r["age"] if r["age"] is not none else "—" }}</td>
+                  <td>{{ r["class_name"] or "—" }}</td>
+                  <td class="mono">{{ r["phone"] or "—" }}</td>
+                  <td class="note">{{ r["note"] or "—" }}</td>
+                  <td class="actions">
+                    <a class="btn btn--small" href="{{ url_for('edit_student', student_id=r['id']) }}">编辑</a>
+                    <form
+                      class="inline"
+                      method="post"
+                      action="{{ url_for('delete_student', student_id=r['id']) }}"
+                      onsubmit="return confirm('确定删除 {{ r['name'] }}（{{ r['student_no'] }}）吗？');"
+                    >
+                      <button class="btn btn--small btn--danger" type="submit">删除</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="8" class="empty">
+                  暂无数据{% if q %}（未找到匹配结果）{% endif %}。你可以先 <a href="{{ url_for('new_student') }}">新增一条学生信息</a>。
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <div class="pager__left">
+          <span class="muted">第 {{ page }} / {{ pages }} 页</span>
+        </div>
+        <div class="pager__right">
+          {% set qp = {'q': q} if q else {} %}
+          <a class="btn btn--small {% if page <= 1 %}btn--disabled{% endif %}"
+             href="{{ url_for('index', page=page-1, **qp) if page > 1 else '#' }}">上一页</a>
+          <a class="btn btn--small {% if page >= pages %}btn--disabled{% endif %}"
+             href="{{ url_for('index', page=page+1, **qp) if page < pages else '#' }}">下一页</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
