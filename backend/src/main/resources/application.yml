@@ -1,0 +1,40 @@
+server:
+  # 若 8080 被占用（如 ApplicationWebServer），可改用 8081，前端代理已同步
+  port: 8081
+spring:
+  application:
+    name: haomei
+  datasource:
+    url: jdbc:sqlite:./data/haomei.db
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: update
+  web:
+    resources:
+      # static images are served from /api/images/{filename} (ImageController)
+      add-mappings: true
+
+app:
+  site:
+    # 二维码中的地址：本地开发用局域网 IP 或内网穿透地址，部署后改为正式域名
+    # 例如: https://haomei.example.com 或 https://xxx.ngrok-free.app
+    # 留空则后台管理页会用当前浏览器地址
+    baseUrl: "https://quantities-breed-amongst-absence.trycloudflare.com"
+  admin:
+    username: admin
+    # demo only: use {noop} prefix so DelegatingPasswordEncoder can handle it as plain text.
+    password: "{noop}admin123"
+  images:
+    # runtime-writeable directory (relative to backend working directory)
+    storageDir: ./uploads/dish-images
+
+jwt:
+  secret: "haomei-super-secret-key-please-change-1234567890"
+  ttlMs: 86400000
+
+logging:
+  level:
+    org.springframework.security: INFO
+

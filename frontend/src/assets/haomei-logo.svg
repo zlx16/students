@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="40" y1="40" x2="470" y2="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2a0d12"/>
+      <stop offset="0.45" stop-color="#7b1b24"/>
+      <stop offset="1" stop-color="#b4432b"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="112" y1="98" x2="390" y2="402" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbeabf"/>
+      <stop offset="0.45" stop-color="#e8c47a"/>
+      <stop offset="1" stop-color="#ba843d"/>
+    </linearGradient>
+    <linearGradient id="gold2" x1="120" y1="210" x2="392" y2="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f7dcaa"/>
+      <stop offset="1" stop-color="#cb964b"/>
+    </linearGradient>
+    <radialGradient id="softLight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(368 116) rotate(145) scale(250)">
+      <stop stop-color="#ffe2a5" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#ffe2a5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- outer seal card -->
+  <rect x="20" y="20" width="472" height="472" rx="104" fill="url(#bg)"/>
+  <rect x="20" y="20" width="472" height="472" rx="104" stroke="#e7c785" stroke-opacity="0.45" stroke-width="4"/>
+  <rect x="42" y="42" width="428" height="428" rx="88" stroke="#e7c785" stroke-opacity="0.25" stroke-width="2"/>
+  <rect width="512" height="512" fill="url(#softLight)"/>
+
+  <!-- meander border (回纹简化) -->
+  <g stroke="#dfb96f" stroke-opacity="0.45" stroke-width="3">
+    <path d="M96 96H146V116H116V146H96V96Z"/>
+    <path d="M416 96H366V116H396V146H416V96Z"/>
+    <path d="M96 416H146V396H116V366H96V416Z"/>
+    <path d="M416 416H366V396H396V366H416V416Z"/>
+  </g>
+
+  <!-- auspicious cloud -->
+  <g stroke="#f1d7a1" stroke-width="8" stroke-linecap="round" opacity="0.85">
+    <path d="M154 154C174 132 198 132 218 152C236 170 258 170 274 154"/>
+    <path d="M250 136C268 118 292 118 310 134C326 148 344 148 358 136"/>
+  </g>
+
+  <!-- platter and cuisine symbol -->
+  <g>
+    <circle cx="256" cy="270" r="136" fill="#f7e1b8" fill-opacity="0.16"/>
+    <path d="M128 218C140 322 200 376 256 376C312 376 372 322 384 218H128Z" fill="url(#gold)" stroke="#f4dca9" stroke-width="8"/>
+    <path d="M118 208C118 194 132 182 148 182H364C380 182 394 194 394 208C394 222 380 234 364 234H148C132 234 118 222 118 208Z" fill="url(#gold2)"/>
+    <path d="M180 244C194 260 214 266 236 260C252 256 266 246 282 246C304 246 322 260 336 282" stroke="#8f2a24" stroke-width="14" stroke-linecap="round" opacity="0.7"/>
+    <circle cx="214" cy="286" r="14" fill="#cf6c32"/>
+    <circle cx="258" cy="300" r="12" fill="#e9b05d"/>
+    <circle cx="304" cy="286" r="13" fill="#c75331"/>
+  </g>
+
+  <!-- chopsticks -->
+  <rect x="326" y="126" width="14" height="156" rx="7" transform="rotate(30 326 126)" fill="#e6c178"/>
+  <rect x="356" y="110" width="14" height="172" rx="7" transform="rotate(30 356 110)" fill="#d4a45a"/>
+
+  <!-- mini seal -->
+  <rect x="96" y="338" width="56" height="56" rx="10" fill="#a1262b" stroke="#f2d9a6" stroke-width="2"/>
+  <path d="M108 352H140V360H116V368H140V376H116V384H140" stroke="#f4deb3" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- cursive calligraphy-style brand text: 好美味 -->
+  <g stroke="#f7e1b2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- 好 (草书连笔) -->
+    <path d="M146 422C166 410 188 400 214 392C206 404 202 420 202 438C202 444 203 447 206 450" stroke-width="9"/>
+    <path d="M156 446C182 438 210 432 240 430" stroke-width="7"/>
+    <path d="M222 392C232 402 244 410 258 416" stroke-width="7"/>
+
+    <!-- 美 (行草结构) -->
+    <path d="M248 398C270 388 294 382 322 378" stroke-width="8"/>
+    <path d="M244 416C272 416 298 414 326 410" stroke-width="7"/>
+    <path d="M286 378C286 394 284 410 280 426C276 440 270 448 262 452" stroke-width="8"/>
+    <path d="M246 446C276 438 306 434 336 434" stroke-width="7"/>
+
+    <!-- 味 (草书意连) -->
+    <path d="M332 392C350 384 370 378 392 374" stroke-width="8"/>
+    <path d="M336 408C336 424 334 438 330 450" stroke-width="8"/>
+    <path d="M324 426C344 422 364 418 386 416" stroke-width="7"/>
+    <path d="M356 394C370 402 382 412 394 424" stroke-width="7"/>
+    <path d="M392 394C392 412 390 428 386 444" stroke-width="8"/>
+  </g>
+</svg>
